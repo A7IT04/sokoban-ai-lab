@@ -6,7 +6,7 @@ The project draws inspiration from [AI Sokoban Agent with RL](https://github.com
 
 ## Interactive lab
 
-Open the [browser lab](https://a7it04.github.io/sokoban-ai-lab/) to play the eight sample puzzles on a phone or desktop. Switch between Arabic and English in the header.
+Open the [browser lab](https://sokoban-ai-lab-preview.surequince8.chatgpt.site/) to play the eight sample puzzles on a phone or desktop. Switch between Arabic and English in the header.
 
 - Compare both solvers from the same position, then scrub through either solution on the board.
 - See proven deadlocks caused by a crate with no path to a goal, a frozen 2 × 2 block, or overlapping goal assignments.
