@@ -1,6 +1,8 @@
 """Classical planning at the crate-push and player-movement levels."""
 
 from collections import deque
+from heapq import heappop, heappush
+from itertools import count
 from typing import Optional
 
 from .core import Board, DIRECTIONS, Position, SearchResult, add
@@ -20,17 +22,21 @@ def walking(board, state):
 
 
 def plan(board: Board, limit: int = 100000, *, initial: Optional[Position] = None) -> SearchResult:
-    """Find a minimum-push solution within the expansion budget."""
+    """Minimize pushes, then moves among minimum-push solutions."""
     start = board.initial if initial is None else initial
     viable = board.viable_crate_cells()
-    if not start.crates <= viable:
+    if not start.crates <= viable or board.frozen_crates(start.crates):
         return SearchResult('unsolvable', '', 0)
 
-    queue = deque([start])
+    order = count()
+    queue = [(0, 0, next(order), start)]
+    best = {start: (0, 0)}
     parent = {start: None}
     expanded = 0
     while queue:
-        state = queue.popleft()
+        pushes, moves, _, state = heappop(queue)
+        if best[state] != (pushes, moves):
+            continue
         if board.solved(state):
             segments = []
             while parent[state] is not None:
@@ -48,8 +54,14 @@ def plan(board: Board, limit: int = 100000, *, initial: Optional[Position] = Non
                 destination = add(crate, delta)
                 if stand not in routes or destination not in viable or destination in state.crates:
                     continue
+                segment = routes[stand] + action
+                cost = (pushes + 1, moves + len(segment))
                 successor = Position(crate, (state.crates - {crate}) | {destination})
-                if successor not in parent:
-                    parent[successor] = (state, routes[stand] + action)
-                    queue.append(successor)
+                if successor in best and best[successor] <= cost:
+                    continue
+                if board.frozen_crates(successor.crates):
+                    continue
+                best[successor] = cost
+                parent[successor] = (state, segment)
+                heappush(queue, (*cost, next(order), successor))
     return SearchResult('unsolvable', '', expanded)

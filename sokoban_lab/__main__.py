@@ -1,18 +1,20 @@
 """Command-line interface for playing and comparing the classical solvers."""
 
 import argparse
+from dataclasses import asdict
 import json
 import time
 from pathlib import Path
 
+from .analysis import analyze
 from .core import Board, DIRECTIONS, solve
 from .hierarchical import plan
 from .levels import EVAL, TRAIN
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Solve, play or benchmark Sokoban')
-    parser.add_argument('command', choices=['solve', 'play', 'benchmark'])
+    parser = argparse.ArgumentParser(description='Solve, play, diagnose or benchmark Sokoban')
+    parser.add_argument('command', choices=['solve', 'play', 'analyze', 'benchmark'])
     parser.add_argument('--file', type=Path, help='UTF-8 level in rectangular XSB format')
     parser.add_argument('--split', choices=['train', 'eval'], help='Built-in level set')
     parser.add_argument('--level', type=int, help='Zero-based index in the selected level set')
@@ -69,6 +71,14 @@ def main():
 
     board = boards[0][2]
     state = board.initial
+    if args.command == 'analyze':
+        dead_squares, deadlocks = analyze(board, state)
+        print(json.dumps({
+            'dead_squares': sorted(dead_squares),
+            'deadlocks': [asdict(deadlock) for deadlock in deadlocks],
+        }, indent=2))
+        return
+
     if args.command == 'solve':
         print(board.render(state))
         print(planner(board, limit=args.limit))

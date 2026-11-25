@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#141915">
+  <meta name="description" content="Play Sokoban, diagnose deadlocks, and compare two optimal search objectives in your browser.">
+  <title>Sokoban AI Lab</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./lab.mjs"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="shell topbar-inner">
+      <span class="brand"><span class="brand-tile" aria-hidden="true"></span>Sokoban AI Lab</span>
+      <nav aria-label="Project links">
+        <a href="https://github.com/A7IT04/sokoban-ai-lab">GitHub <span aria-hidden="true">↗</span></a>
+        <button type="button" id="language" class="plain">العربية</button>
+      </nav>
+    </div>
+  </header>
+  <main class="shell">
+    <header class="intro">
+      <h1 data-i18n="title">Explore a puzzle.</h1>
+      <p data-i18n="intro">Push the crates onto their goals. Then compare the shortest route with the route that uses the fewest pushes.</p>
+    </header>
+
+    <div class="workspace">
+      <section class="panel board-panel" aria-labelledby="board-title">
+        <div class="panel-heading">
+          <h2 id="board-title" data-i18n="board">Board</h2>
+          <label>
+            <span class="sr-only" data-i18n="puzzle">Puzzle</span>
+            <select id="level-select"></select>
+          </label>
+        </div>
+        <div class="board-frame" id="board-frame" dir="ltr">
+          <div id="board" class="board" role="img" aria-label="Sokoban board"></div>
+        </div>
+        <div class="legend">
+          <span><i class="legend-crate"></i><span data-i18n="crate">Crate</span></span>
+          <span><i class="legend-goal"></i><span data-i18n="goal">Goal</span></span>
+          <span><i class="legend-dead"></i><span data-i18n="deadSquare">Dead square</span></span>
+        </div>
+        <div class="board-controls">
+          <div class="move-pad" id="move-pad" dir="ltr" role="group" aria-label="Move player">
+            <button type="button" data-move="U" data-label="up" aria-label="Up">↑</button>
+            <button type="button" data-move="L" data-label="left" aria-label="Left">←</button>
+            <button type="button" data-move="D" data-label="down" aria-label="Down">↓</button>
+            <button type="button" data-move="R" data-label="right" aria-label="Right">→</button>
+          </div>
+          <div class="button-row">
+            <button type="button" id="undo" data-i18n="undo">Undo</button>
+            <button type="button" id="reset" data-i18n="reset">Reset</button>
+          </div>
+        </div>
+      </section>
+
+      <aside class="inspector">
+        <section class="panel" aria-labelledby="position-title">
+          <div class="panel-heading">
+            <h2 id="position-title" data-i18n="position">Position</h2>
+            <label class="toggle"><input type="checkbox" id="show-dead" checked><span data-i18n="showDead">Dead-square overlay</span></label>
+          </div>
+          <dl class="metrics">
+            <div><dt data-i18n="moves">Moves</dt><dd id="move-count">0</dd></div>
+            <div><dt data-i18n="pushes">Pushes</dt><dd id="push-count">0</dd></div>
+            <div><dt data-i18n="onGoals">On goals</dt><dd id="goal-count">0 / 0</dd></div>
+          </dl>
+          <div class="position-status" id="position-status" role="status"></div>
+        </section>
+
+        <section class="panel solver-panel" aria-labelledby="solver-title">
+          <div class="panel-heading">
+            <h2 id="solver-title" data-i18n="solver">Compare solvers</h2>
+            <button type="button" id="compare" class="primary" data-i18n="compare">Run comparison</button>
+            <button type="button" id="stop" data-i18n="stop" hidden>Cancel</button>
+          </div>
+          <p class="muted" id="solver-status" role="status" data-i18n="solverIntro">Both solvers start from your current position.</p>
+          <div id="results" class="results" hidden></div>
+          <div id="replay" class="replay" hidden>
+            <div class="replay-heading">
+              <strong id="replay-name"></strong>
+              <button type="button" id="exit-replay" class="plain" data-i18n="exitReplay">Exit replay</button>
+            </div>
+            <label class="sr-only" for="timeline" data-i18n="timeline">Replay timeline</label>
+            <input type="range" min="0" max="0" value="0" id="timeline">
+            <div class="replay-controls">
+              <button type="button" id="previous-step" data-i18n="previous">Previous</button>
+              <button type="button" id="autoplay" data-i18n="play">Play</button>
+              <button type="button" id="next-step" data-i18n="next">Next</button>
+              <output id="replay-step" for="timeline"></output>
+            </div>
+          </div>
+          <button type="button" id="download" class="plain download" data-i18n="download" hidden>Download results (JSON)</button>
+        </section>
+      </aside>
+    </div>
+
+    <details class="panel editor" id="editor">
+      <summary data-i18n="editor">Edit or share a puzzle</summary>
+      <div class="editor-body">
+        <div>
+          <label for="level-input" data-i18n="editorLabel">Level in XSB format</label>
+          <textarea id="level-input" rows="9" cols="28" dir="ltr" spellcheck="false" autocapitalize="off" autocomplete="off"></textarea>
+        </div>
+        <div class="editor-options">
+          <p class="muted" data-i18n="editorIntro">Keep the rows the same width. Spaces are floor. Use one player and matching counts of crates and goals.</p>
+          <dl class="tile-reference">
+            <div><dt>#</dt><dd data-i18n="wall">Wall</dd></div><div><dt>@</dt><dd data-i18n="player">Player</dd></div>
+            <div><dt>$</dt><dd data-i18n="crate">Crate</dd></div><div><dt>.</dt><dd data-i18n="goal">Goal</dd></div>
+            <div><dt>*</dt><dd data-i18n="crateGoal">Crate on goal</dd></div><div><dt>+</dt><dd data-i18n="playerGoal">Player on goal</dd></div>
+          </dl>
+          <div class="button-row">
+            <button type="button" id="load-level" class="primary" data-i18n="load">Load puzzle</button>
+            <button type="button" id="copy-link" data-i18n="share">Copy current puzzle link</button>
+          </div>
+          <p id="editor-status" role="status"></p>
+          <input id="share-link" type="url" dir="ltr" readonly data-label="shareLink" aria-label="Puzzle link" hidden>
+        </div>
+      </div>
+    </details>
+  </main>
+</body>
+</html>

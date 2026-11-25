@@ -1,6 +1,7 @@
 """Deterministic Sokoban rules and shortest-move A* search."""
 
 from collections import deque
+from collections.abc import Iterable
 from dataclasses import dataclass
 from heapq import heappop, heappush
 from itertools import count
@@ -87,10 +88,10 @@ class Board:
             for y in range(self.height)
         )
 
-    def crate_push_distances(self) -> dict[Cell, int]:
+    def crate_push_distances(self, goals: Optional[Iterable[Cell]] = None) -> dict[Cell, int]:
         """Minimum pushes to any goal with other crates and walking ignored."""
-        distances = dict.fromkeys(self.targets, 0)
-        queue = deque(self.targets)
+        distances = dict.fromkeys(self.targets if goals is None else goals, 0)
+        queue = deque(distances)
         while queue:
             x, y = cell = queue.popleft()
             for dx, dy in DIRECTIONS.values():
@@ -104,6 +105,17 @@ class Board:
     def viable_crate_cells(self) -> set[Cell]:
         return set(self.crate_push_distances())
 
+    def frozen_crates(self, crates: frozenset[Cell]) -> set[Cell]:
+        """Find off-goal crates frozen in fully occupied 2-by-2 blocks."""
+        blocked = set()
+        for x, y in crates - self.targets:
+            for left in (x - 1, x):
+                for top in (y - 1, y):
+                    block = ((left, top), (left + 1, top), (left, top + 1), (left + 1, top + 1))
+                    if all(cell not in self.floor or cell in crates for cell in block):
+                        blocked.add((x, y))
+        return blocked
+
 
 @dataclass(frozen=True)
 class SearchResult:
@@ -116,7 +128,7 @@ def solve(board: Board, initial: Optional[Position] = None, limit: int = 100000)
     """Find a minimum-move solution within the expansion budget."""
     start = board.initial if initial is None else initial
     distances = board.crate_push_distances()
-    if not start.crates <= distances.keys():
+    if not start.crates <= distances.keys() or board.frozen_crates(start.crates):
         return SearchResult('unsolvable', '', 0)
 
     serial = count()
@@ -144,6 +156,8 @@ def solve(board: Board, initial: Optional[Position] = None, limit: int = 100000)
             if successor == state or not successor.crates <= distances.keys():
                 continue
             if next_moves >= best.get(successor, float('inf')):
+                continue
+            if successor.crates is not state.crates and board.frozen_crates(successor.crates):
                 continue
             best[successor] = next_moves
             parent[successor] = (state, action)

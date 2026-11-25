@@ -1,8 +1,22 @@
 # Sokoban AI Lab
 
-A Python lab for experimenting with shortest-move search, minimum-push planning, and reinforcement learning on Sokoban-style puzzles. The six included puzzles are small, hand-written examples intended for learning and debugging.
+A browser and Python lab for exploring shortest-move search, minimum-push planning, and reinforcement learning on Sokoban-style puzzles.
 
 The project draws inspiration from [AI Sokoban Agent with RL](https://github.com/m7md-ebw/ai-sokoban), a graduation project at the Islamic University of Gaza. This repository contains an independent implementation and original levels. See the [Arabic guide](README.ar.md).
+
+## Interactive lab
+
+Open the [browser lab](https://a7it04.github.io/sokoban-ai-lab/) to play the eight sample puzzles on a phone or desktop. Switch between Arabic and English in the header.
+
+- Compare both solvers from the same position, then scrub through either solution on the board.
+- See proven deadlocks caused by a crate with no path to a goal, a frozen 2 × 2 block, or overlapping goal assignments.
+- Paste a rectangular XSB level, share it by link, or export a solution comparison as JSON.
+
+Try **Crossroads** to see why the objective matters. The shortest route takes **18 moves and 6 pushes**. The route with the fewest pushes takes **19 moves and 4 pushes**.
+
+The browser runs both searches locally in a Web Worker and gives each planner a budget of 60,000 expanded states. A limit result means the solver ran out of search budget. The deadlock checks prove some positions unsolvable. Positions without a detected deadlock may still be unsolvable.
+
+To serve the browser lab locally, run `python -m http.server 8000 --directory docs` from the project directory and open [localhost:8000](http://localhost:8000).
 
 ## Quick start
 
@@ -13,6 +27,7 @@ python -m sokoban_lab play
 python -m sokoban_lab solve --level 2
 python -m sokoban_lab solve --planner macro --split eval --level 1
 python -m sokoban_lab solve --file level.txt
+python -m sokoban_lab analyze --file level.txt
 python -m unittest discover -s tests -v
 ```
 
@@ -38,7 +53,9 @@ python -m sokoban_lab benchmark --planner macro
 python -m sokoban_lab benchmark --planner astar --split eval
 ```
 
-Each command emits one JSON record per puzzle. A* minimizes player moves, including pushes. It estimates the remaining work from reverse-push distances to the goals. The macro planner minimizes pushes by finding a walking route for each candidate push. Compare `moves` and `pushes` separately. The `expanded` count measures search states in each planner, and those states represent different steps. Use `--limit` to cap expansions.
+Each command emits one JSON record per puzzle. A* minimizes player moves, including pushes. It estimates the remaining work from reverse-push distances to the goals. The macro planner first minimizes pushes, then chooses the shortest route among plans with the same push count. The `expanded` count measures search states in each planner, and those states represent different steps. Use `--limit` to cap expansions.
+
+The `analyze` command reports static dead squares and the deadlock evidence in a position. Coordinates use zero-based `[column, row]` pairs from the upper-left corner.
 
 ## Run a reinforcement learning experiment
 
@@ -58,6 +75,6 @@ The curriculum expands the pool of four training puzzles in three stages. Evalua
 
 ## Validation and contributions
 
-The automated tests cover search, game rules, and the Gymnasium environment. The CI workflow installs the package and runs short CPU training checks for PPO, Recurrent PPO, and DQN. No pretrained models are bundled.
+The automated tests cover search, game rules, deadlock diagnosis, and the Gymnasium environment. Run `node --test tests/web.test.mjs` to check both browser solvers against the Python solvers on every gallery puzzle. CI also runs short CPU training checks for PPO, Recurrent PPO, and DQN. No pretrained models are bundled.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for how to submit a level, reproducible experiment, or change. The project is released under the [MIT license](LICENSE).
